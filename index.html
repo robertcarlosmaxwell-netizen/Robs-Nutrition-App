@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+<title>Nutrition</title>
+
+<!-- Home screen / PWA behavior -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nutrition">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<style>
+  /* Design tokens copied verbatim from the Workout App so the two apps read as a pair. */
+  :root{
+    --bg:#0f1115;
+    --bg-elev:#171a21;
+    --bg-elev-2:#1f232c;
+    --border:#2a2f3a;
+    --text:#eef0f4;
+    --text-dim:#9aa2b1;
+    --accent:#5b8cff;
+    --accent-dim:#33406b;
+    --danger:#ff5c5c;
+    --danger-dim:#3a2226;
+    --good:#4ade80;
+    --radius:14px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --tabbar-h: 70px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  html{color-scheme:dark;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overscroll-behavior-y:none;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    min-height:100dvh;
+  }
+  header{
+    padding: calc(14px + var(--safe-top)) 18px 12px;
+    background:var(--bg);
+    position:sticky;
+    top:0;
+    z-index:5;
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    margin:0;
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  header .subtitle{
+    margin-top:2px;
+    font-size:13px;
+    color:var(--text-dim);
+  }
+  main{
+    flex:1;
+    /* Clears the fixed tab bar (and the toast above it). */
+    padding: 16px 16px calc(90px + var(--safe-bottom));
+    max-width:640px;
+    width:100%;
+    margin:0 auto;
+  }
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* Bottom nav */
+  nav.tabbar{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    display:flex;
+    background:rgba(23,26,33,0.92);
+    backdrop-filter: blur(14px);
+    border-top:1px solid var(--border);
+    padding-bottom: var(--safe-bottom);
+    z-index:10;
+  }
+  nav.tabbar button{
+    flex:1;
+    min-width:0;
+    min-height:44px;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-size:10px;
+    font-weight:600;
+    padding:10px 2px 8px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    font-family:inherit;
+    white-space:nowrap;
+  }
+  nav.tabbar button .ic{width:22px;height:22px;display:block;}
+  nav.tabbar button .ic svg{width:22px;height:22px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  nav.tabbar button.active{color:var(--accent);}
+
+  h2.section-title{
+    font-size:15px;
+    font-weight:700;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin:0 0 10px;
+  }
+
+  /* Cards */
+  .card{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .card-title{
+    font-size:11px;
+    font-weight:700;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin-bottom:8px;
+  }
+
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:6px;
+    font-weight:600;
+  }
+  input[type="text"], input[type="url"], input[type="number"], input[type="date"], select{
+    width:100%;
+    background:var(--bg-elev-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:16px;
+    font-family:inherit;
+    outline:none;
+    height:44px;
+    line-height:1.2;
+  }
+  input:focus, select:focus{border-color:var(--accent);}
+  input[type="date"]{
+    -webkit-appearance:none;
+    appearance:none;
+    color-scheme:dark;
+    min-height:44px;
+    box-sizing:border-box;
+  }
+  input[type="date"]::-webkit-date-and-time-value{
+    text-align:left;
+    min-height:20px;
+  }
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:10px;
+    padding:12px 16px;
+    min-height:44px;
+    font-size:15px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--accent); color:#0b1020; width:100%;}
+  .btn-secondary{background:var(--bg-elev-2); color:var(--text); border:1px solid var(--border);}
+  .btn-danger{background:var(--danger-dim); color:var(--danger);}
+  .btn-ghost{background:none; color:var(--accent); padding:8px 6px;}
+  .btn-block{width:100%;}
+  .btn-sm{padding:8px 10px; font-size:13px; border-radius:8px;}
+
+  .row{display:flex; gap:10px;}
+  .row > *{flex:1;}
+
+  .empty-state{
+    text-align:center;
+    color:var(--text-dim);
+    padding:60px 20px;
+    font-size:14px;
+    line-height:1.6;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(96px + var(--safe-bottom));
+    transform:translateX(-50%) translateY(20px);
+    background:var(--good);
+    color:#0b1020;
+    padding:10px 18px;
+    border-radius:30px;
+    font-weight:700;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:50;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.err{background:var(--danger); color:#fff;}
+
+  /* Cloud sync settings */
+  .sync-hint{
+    font-size:11px;
+    color:var(--text-dim);
+    line-height:1.5;
+    margin:2px 0 10px;
+  }
+  .sync-status{
+    margin-top:10px;
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.5;
+  }
+  .sync-status.ok{color:var(--good);}
+  .sync-status.err{color:var(--danger);}
+
+  .meter{
+    height:8px;
+    background:var(--bg-elev-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    overflow:hidden;
+    margin-top:8px;
+  }
+  .meter > div{height:100%; background:var(--good); width:0;}
+  .meter.warn > div{background:var(--danger);}
+  .meter-line{font-size:12px; color:var(--text-dim); margin-top:6px;}
+
+  .about{font-size:12px; color:var(--text-dim); line-height:1.6;}
+  .about p{margin:0 0 8px;}
+  .about a{color:var(--accent);}
+  .footnote{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-dim);
+    margin:18px 0 0;
+  }
+
+  /* Storage-full alert: deliberately loud and persistent until dismissed,
+     because the alternative is data that looks saved and isn't. */
+  .storage-alert{
+    background:var(--danger-dim);
+    border-left:3px solid var(--danger);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:13px;
+    color:var(--text);
+    margin-bottom:12px;
+  }
+
+  /* Shown when a new version lands while an entry or review screen is open,
+     so the refresh happens on Rob's terms instead of discarding edits. */
+  .update-banner{
+    position:fixed;
+    left:12px;
+    right:12px;
+    bottom:calc(var(--tabbar-h) + var(--safe-bottom) + 74px);
+    z-index:60;
+    background:var(--accent);
+    color:#0b1020;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    min-height:44px;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:700;
+    box-shadow:0 6px 20px rgba(0,0,0,0.45);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="headerTitle">Today</h1>
+    <div class="subtitle" id="headerSubtitle"></div>
+  </header>
+
+  <main>
+    <div id="storageAlert" class="storage-alert" data-role="storage-alert" hidden></div>
+
+    <!-- TODAY -->
+    <section id="view-today" class="view active">
+      <div class="empty-state" data-role="today-empty">
+        Nothing logged for this day.<br>Food logging arrives in M1.
+      </div>
+    </section>
+
+    <!-- ADD -->
+    <section id="view-add" class="view">
+      <div class="empty-state">Search, barcode and quick add arrive in M1 and M2.</div>
+    </section>
+
+    <!-- FOODS -->
+    <section id="view-foods" class="view">
+      <div class="empty-state">No custom foods or recipes yet.</div>
+    </section>
+
+    <!-- TRENDS -->
+    <section id="view-trends" class="view">
+      <div class="empty-state">Trends need logged days. They arrive in M3.</div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view">
+      <!-- The Apps Script URL plus token is a capability for the sheet and for
+           Anthropic credits, so it is entered on the device and never lives in the repo. -->
+      <div class="card">
+        <div class="card-title">Cloud sync</div>
+        <div class="sync-hint">Connects to the nutrition-proxy Apps Script. iOS gives the app no background time, so it syncs when opened.</div>
+        <input type="url" id="syncUrlInput" placeholder="Apps Script web app URL" autocomplete="off" spellcheck="false">
+        <input type="text" id="syncTokenInput" placeholder="Shared secret" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+        <div class="row" style="margin-top:10px;">
+          <button class="btn btn-secondary btn-sm" id="syncSaveBtn">Save</button>
+          <button class="btn btn-primary btn-sm" id="pingBtn">Test connection</button>
+        </div>
+        <div class="sync-status" id="syncStatus" data-role="sync-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Storage</div>
+        <div class="meter" id="storageMeter"><div></div></div>
+        <div class="meter-line" id="storageLine" data-role="storage-line"></div>
+        <div class="meter-line" id="isolationLine" data-role="isolation-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">About</div>
+        <div class="about">
+          <p>Food data from USDA FoodData Central (public domain) and Open Food Facts, available under the Open Database License (ODbL).</p>
+          <p>Targets are the ones you set. This app does not set clinical targets.</p>
+        </div>
+      </div>
+      <div class="footnote">Not medical advice.</div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-view="today">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span>Today</span>
+    </button>
+    <button class="tab-btn" data-view="add">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span>Add</span>
+    </button>
+    <button class="tab-btn" data-view="foods">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"/></svg></span><span>Foods</span>
+    </button>
+    <button class="tab-btn" data-view="trends">
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/></svg></span><span>Trends</span>
+    </button>
+    <button class="tab-btn" data-view="settings">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span>Settings</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
