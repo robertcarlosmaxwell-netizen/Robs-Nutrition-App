@@ -339,6 +339,7 @@ function loadConfig() {
     lastError: c.lastError || null,
     lastPing: c.lastPing || null,
     needsFullSync: !!c.needsFullSync,
+    fdcKey: c.fdcKey || '',
   };
 }
 
@@ -925,6 +926,226 @@ async function callProxy(action, params, timeoutMs, externalSignal) {
 }
 
 /* ======================================================================
+   USDA FoodData Central, called directly from the phone
+   Apps Script's route to FDC timed out on Rob's first real search (M1,
+   2026-10-11) while FDC answered this Mac in half a second, and FDC allows
+   cross-origin calls (Access-Control-Allow-Origin: *, checked the same day).
+   So with a key in Settings the app asks FDC itself, and falls back to the
+   proxy only if that fails. The key lives in nt_config_v1 on the phone,
+   never in the repo.
+
+   The normalizer below is a copy of Proxy/Code.gs normalizeFdcFood_; a test
+   checks the two give identical output on every fixture.
+   ====================================================================== */
+const FDC_BASE = 'https://api.nal.usda.gov/fdc/v1';
+const FDC_NUMBERS = { protein: '203', fat: '204', carbs: '205', fiber: '291', satFat: '606' };
+const FDC_LABEL_KEYS = { kcal: 'calories', protein: 'protein', carbs: 'carbohydrates', fat: 'fat', satFat: 'saturatedFat', fiber: 'fiber' };
+
+function fdcNutrients(raw) {
+  const out = {};
+  (raw.foodNutrients || []).forEach(x => {
+    let num, amount, unit;
+    if (x.nutrient) { num = x.nutrient.number; amount = x.amount; unit = x.nutrient.unitName; }
+    else { num = x.nutrientNumber; amount = x.value; unit = x.unitName; }
+    if (num == null || amount == null || isNaN(Number(amount))) return;
+    out[String(num)] = { amount: Number(amount), unit: String(unit || '').toLowerCase() };
+  });
+  return out;
+}
+
+function fdcClean(v) {
+  if (v == null || isNaN(v)) return null;
+  return Math.round(Math.max(0, Number(v)) * 1000) / 1000;
+}
+
+function fdcEnergy(n) {
+  if (n['208'] && n['208'].unit === 'kcal') return n['208'].amount;
+  if (n['958'] && n['958'].unit === 'kcal') return n['958'].amount;
+  if (n['957'] && n['957'].unit === 'kcal') return n['957'].amount;
+  if (n['268'] && n['268'].unit === 'kj') return n['268'].amount / 4.184;
+  if (n['208'] && n['208'].unit === 'kj') return n['208'].amount / 4.184;
+  return null;
+}
+
+function fdcScale(per100, amount) {
+  const out = {};
+  NUTS.forEach(k => { out[k] = per100[k] == null ? null : Math.round(per100[k] * amount / 100 * 1000) / 1000; });
+  return out;
+}
+
+function fdcAmount(a) {
+  const n = Number(a);
+  return isFinite(n) ? String(Math.round(n * 100) / 100) : '';
+}
+
+function fdcPortionLabel(p) {
+  const desc = p.portionDescription && !/quantity not specified/i.test(p.portionDescription) ? p.portionDescription : '';
+  const unit = p.measureUnit && p.measureUnit.name ? p.measureUnit.name : '';
+  let base;
+  if (desc) base = desc;
+  else if (unit === 'RACC') base = 'serving';
+  else base = [fdcAmount(p.amount || 1), unit && unit !== 'undetermined' ? unit : '', p.modifier || ''].join(' ').replace(/\s+/g, ' ').trim();
+  return base + ' (' + fdcAmount(p.gramWeight) + ' g)';
+}
+
+function normalizeFdcFood(raw, detail) {
+  const n = fdcNutrients(raw);
+  const per100 = { kcal: fdcClean(fdcEnergy(n)) };
+  Object.keys(FDC_NUMBERS).forEach(k => {
+    const hit = n[FDC_NUMBERS[k]];
+    per100[k] = hit ? fdcClean(hit.amount) : null;
+  });
+  if (per100.kcal == null) return null;
+
+  const unitRaw = String(raw.servingSizeUnit || '').toLowerCase();
+  const baseUnit = /^(ml|mlt)$/.test(unitRaw) ? 'ml' : 'g';
+  const servings = [];
+  if (raw.servingSize && /^(g|grm|ml|mlt)$/.test(unitRaw)) {
+    const size = Number(raw.servingSize);
+    const hh = raw.householdServingFullText ? String(raw.householdServingFullText).trim() : '';
+    const per = fdcScale(per100, size);
+    if (raw.labelNutrients) {
+      NUTS.forEach(k => {
+        const l = raw.labelNutrients[FDC_LABEL_KEYS[k]];
+        if (l && l.value != null && !isNaN(Number(l.value))) per[k] = fdcClean(l.value);
+      });
+    }
+    servings.push({ label: (hh ? hh + ' ' : '') + '(' + fdcAmount(size) + ' ' + baseUnit + ')', grams: baseUnit === 'g' ? size : null, per });
+  }
+  (raw.foodPortions || [])
+    .filter(p => p && Number(p.gramWeight) > 0)
+    .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0))
+    .forEach(p => {
+      const g = Number(p.gramWeight);
+      servings.push({ label: fdcPortionLabel(p), grams: g, per: fdcScale(per100, g) });
+    });
+
+  let name = String(raw.description || '').trim();
+  if (raw.dataType === 'Branded' && name === name.toUpperCase()) {
+    name = name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+  const category = typeof raw.foodCategory === 'string' ? raw.foodCategory
+    : (raw.foodCategory && raw.foodCategory.description) || raw.brandedFoodCategory || '';
+
+  return {
+    id: 'fdc:' + raw.fdcId,
+    source: 'fdc',
+    sourceId: String(raw.fdcId),
+    dataType: raw.dataType || '',
+    category: String(category),
+    name,
+    brand: raw.brandOwner || raw.brandName || '',
+    upc: raw.gtinUpc || '',
+    baseUnit,
+    per100g: per100,
+    servings,
+    defaultServing: servings.length ? 0 : -1,
+    incomplete: NUTS.filter(k => per100[k] == null),
+    detail: !!detail,
+  };
+}
+
+/* One FDC request with a timeout. Error messages are built here, so the URL
+   (which carries the key) can never end up on screen. */
+async function fdcRequest(path, { signal, timeoutMs = LOOKUP_TIMEOUT_MS } = {}) {
+  const abort = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; abort.abort(); }, timeoutMs);
+  const onExternal = () => abort.abort();
+  if (signal) signal.addEventListener('abort', onExternal);
+  const sep = path.includes('?') ? '&' : '?';
+  try {
+    let res;
+    try {
+      // A plain GET with no custom headers: a CORS "simple request", no preflight.
+      res = await fetch(FDC_BASE + path + sep + 'api_key=' + encodeURIComponent(config.fdcKey), { signal: abort.signal });
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || err.code === 20)) {
+        if (timedOut) throw new Error(`USDA did not answer after ${Math.round(timeoutMs / 1000)}s`);
+        const e = new Error('cancelled'); e.cancelled = true; throw e;
+      }
+      throw new Error('could not reach USDA');
+    }
+    if (res.status === 429) throw new Error('USDA rate limited');
+    if (res.status === 403) throw new Error('USDA rejected the API key (Settings)');
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`USDA HTTP ${res.status}`);
+    try { return JSON.parse(await res.text()); }
+    catch (e) { throw new Error('USDA returned something other than JSON'); }
+  } finally {
+    clearTimeout(timer);
+    if (signal) signal.removeEventListener('abort', onExternal);
+  }
+}
+
+// Session cache only (memory, never storage), so retyping a query is instant.
+const fdcSessionCache = new Map();
+
+async function fdcSearchDirect(query, signal) {
+  const key = 's:' + query.toLowerCase();
+  if (fdcSessionCache.has(key)) return fdcSessionCache.get(key);
+  // Generic foods first (Foundation and SR Legacy), then Branded, as the proxy does.
+  // GET, not POST: a JSON POST makes the browser send a CORS preflight first,
+  // which doubles the calls against the key's hourly limit and fails outright
+  // whenever FDC answers it with an error (seen 2026-10-11). The OpenAPI spec
+  // gives dataType as a comma-separated list (style: form, explode: false).
+  const searchPath = (types, size) => '/foods/search?query=' + encodeURIComponent(query)
+    + '&dataType=' + types.map(encodeURIComponent).join(',') + '&pageSize=' + size;
+  const [generic, branded] = await Promise.all([
+    fdcRequest(searchPath(['Foundation', 'SR Legacy'], 10), { signal }),
+    fdcRequest(searchPath(['Branded'], 15), { signal }),
+  ]);
+  const foods = [];
+  [generic, branded].forEach(b => ((b && b.foods) || []).forEach(f => { const n = normalizeFdcFood(f, false); if (n) foods.push(n); }));
+  fdcSessionCache.set(key, foods);
+  return foods;
+}
+
+async function fdcGetFoodDirect(fdcId) {
+  const key = 'f:' + fdcId;
+  if (fdcSessionCache.has(key)) return fdcSessionCache.get(key);
+  const raw = await fdcRequest('/food/' + encodeURIComponent(fdcId));
+  if (!raw) throw new Error('USDA has no food ' + fdcId);
+  const food = normalizeFdcFood(raw, true);
+  if (!food) throw new Error('USDA food ' + fdcId + ' has no calories');
+  fdcSessionCache.set(key, food);
+  return food;
+}
+
+/* Direct first when a key is set; the proxy if that fails or there's no key.
+   Says which failed when both do. */
+async function searchFoodsRemote(query, signal) {
+  let directErr = null;
+  if (config.fdcKey) {
+    try { return await fdcSearchDirect(query, signal); }
+    catch (err) { if (err.cancelled) throw err; directErr = err; }
+  }
+  if (!config.url) throw directErr || new Error('USDA search needs a key or the proxy (Settings)');
+  try {
+    const body = await callProxy('searchFoods', { query }, LOOKUP_TIMEOUT_MS, signal);
+    return body.foods || [];
+  } catch (err) {
+    if (err.cancelled || !directErr) throw err;
+    throw new Error(`${directErr.message}; proxy: ${err.message}`);
+  }
+}
+
+async function getFoodRemote(fdcId) {
+  let directErr = null;
+  if (config.fdcKey) {
+    try { return await fdcGetFoodDirect(fdcId); }
+    catch (err) { directErr = err; }
+  }
+  if (!config.url) throw directErr || new Error('no USDA key or proxy (Settings)');
+  try {
+    return (await callProxy('getFood', { fdcId }, LOOKUP_TIMEOUT_MS)).food;
+  } catch (err) {
+    if (!directErr) throw err;
+    throw new Error(`${directErr.message}; proxy: ${err.message}`);
+  }
+}
+
+/* ======================================================================
    Food search (shared by the Add tab and the recipe ingredient picker)
    Debounced 300 ms in memory, no storage writes. Local foods (custom,
    recipes, cached) show first and work offline; USDA results follow.
@@ -1009,15 +1230,15 @@ function mountSearch(container, { includeRecipes = true, onPick, placeholder = '
     if (inflight) inflight.abort();
     const local = localMatches(query, { includeRecipes });
     draw(local, null);
-    if (!config.url) { setStatus(local.length ? 'USDA search needs the proxy (Settings).' : 'No matches in your foods. USDA search needs the proxy (Settings).', !local.length); return; }
+    if (!config.url && !config.fdcKey) { setStatus(local.length ? 'USDA search needs a USDA key or the proxy (Settings).' : 'No matches in your foods. USDA search needs a USDA key or the proxy (Settings).', !local.length); return; }
     if (navigator.onLine === false) { setStatus('Offline: showing your foods only.'); return; }
     setStatus('Searching USDA…');
     inflight = new AbortController();
     try {
-      const body = await callProxy('searchFoods', { query }, LOOKUP_TIMEOUT_MS, inflight.signal);
+      const found = await searchFoodsRemote(query, inflight.signal);
       if (my !== seq) return;
       const localIds = new Set(local.map(f => f.id));
-      const remote = (body.foods || []).filter(f => !localIds.has(f.id));
+      const remote = found.filter(f => !localIds.has(f.id));
       draw(local, remote);
       setStatus(remote.length || local.length ? '' : `No matches for "${query}".`);
     } catch (err) {
@@ -1059,8 +1280,7 @@ async function ensureDetail(food) {
   const cached = foodCache[food.id];
   if (cached && cached.food.detail) return { food: cached.food };
   try {
-    const body = await callProxy('getFood', { fdcId: food.sourceId }, LOOKUP_TIMEOUT_MS);
-    return { food: body.food };
+    return { food: await getFoodRemote(food.sourceId) };
   } catch (err) {
     return { food, warning: `Serving sizes unavailable (${err.message}). Grams work.` };
   }
@@ -2405,6 +2625,22 @@ document.getElementById('syncSaveBtn').addEventListener('click', () => {
 
 document.getElementById('pingBtn').addEventListener('click', () => pingProxy());
 
+const fdcKeyInput = document.getElementById('fdcKeyInput');
+document.getElementById('fdcKeySaveBtn').addEventListener('click', () => {
+  config.fdcKey = fdcKeyInput.value.trim();
+  if (!saveJson(KEYS.config, config)) return;
+  fdcSessionCache.clear();
+  renderFdcKeyStatus();
+  showToast(config.fdcKey ? 'USDA key saved' : 'USDA key removed');
+});
+
+function renderFdcKeyStatus() {
+  const el = document.getElementById('fdcKeyStatus');
+  if (el) el.textContent = config.fdcKey
+    ? 'Set. Searches go straight to USDA, with the proxy as backup.'
+    : 'Not set. Searches go through the proxy.';
+}
+
 /* ======================================================================
    Lifecycle
    iOS resumes a frozen home-screen app instead of re-running app.js, so a
@@ -2499,6 +2735,8 @@ if ('serviceWorker' in navigator) {
    ====================================================================== */
 syncUrlInput.value = config.url;
 syncTokenInput.value = config.token;
+fdcKeyInput.value = config.fdcKey;
+renderFdcKeyStatus();
 renderHeader();
 renderToday();
 renderSyncStatus();

@@ -520,6 +520,14 @@
       <div id="backupRoot"></div>
 
       <div class="card">
+        <div class="card-title">Food search</div>
+        <div class="sync-hint">Your free USDA FoodData Central API key. Kept on this phone only. With it, searches go straight to USDA, which is faster and doesn't depend on the proxy.</div>
+        <input type="text" id="fdcKeyInput" placeholder="USDA API key" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-secondary btn-sm btn-block" id="fdcKeySaveBtn" style="margin-top:8px;">Save key</button>
+        <div class="sync-status" id="fdcKeyStatus" data-role="fdc-key-status"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Storage</div>
         <div class="meter" id="storageMeter"><div></div></div>
         <div class="meter-line" id="storageLine" data-role="storage-line"></div>
