@@ -6,7 +6,7 @@
 // and every service worker on an origin sees every cache on it. activate below
 // deletes only caches with OUR prefix, never "everything that isn't mine".
 const CACHE_PREFIX = 'nutrition-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v1';
+const CACHE_NAME = CACHE_PREFIX + 'v2';
 const ASSETS = [
   './',
   './index.html',

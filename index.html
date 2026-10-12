@@ -273,6 +273,183 @@
     margin-bottom:12px;
   }
 
+
+  /* Header with the mode chip on the right (Today only) */
+  .header-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .mode-chip{
+    flex:0 0 auto;
+    background:var(--bg-elev-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:20px;
+    padding:6px 14px;
+    min-height:36px;
+    font-size:13px;
+    font-weight:700;
+    font-family:inherit;
+    margin-top:-2px;
+  }
+  .mode-chip[hidden]{display:none;}
+
+  .muted{color:var(--text-dim);}
+  .small{font-size:12px;}
+  .num{font-variant-numeric:tabular-nums;}
+  .hint{font-size:12px; color:var(--text-dim); line-height:1.5; margin:6px 0 0;}
+  .spacer{height:10px;}
+
+  /* Date row on Today */
+  .date-row{display:flex; gap:8px; align-items:center; margin-bottom:12px;}
+  .date-row input[type="date"]{flex:1;}
+  .date-row .btn{flex:0 0 auto; width:auto;}
+
+  /* Target bars */
+  .bar-row{margin-bottom:10px;}
+  .bar-row:last-child{margin-bottom:0;}
+  .bar-head{display:flex; justify-content:space-between; gap:8px; font-size:13px; margin-bottom:4px;}
+  .bar-head .bar-name{font-weight:700;}
+  .bar-head .bar-val{color:var(--text-dim);}
+  .bar-head .bar-val strong{color:var(--text);}
+  .bar{height:8px; background:var(--bg-elev-2); border-radius:5px; overflow:hidden;}
+  .bar > div{height:100%; background:var(--accent); border-radius:5px;}
+  .bar-row.met .bar > div{background:var(--good);}
+  .bar-row.flag .bar > div{background:var(--danger);}
+  .bar-row.flag .bar-note{color:var(--danger);}
+  .bar-note{font-size:11px; color:var(--text-dim); margin-top:3px;}
+  .info-line{font-size:12px; color:var(--text-dim); margin-top:10px; line-height:1.5;}
+
+  .remaining{
+    background:var(--bg-elev-2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:12px;
+  }
+  .remaining.flag{border-color:var(--danger); color:var(--danger); background:var(--danger-dim);}
+
+  .notice{
+    background:var(--accent-dim);
+    border-left:3px solid var(--accent);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:13px;
+    margin-bottom:12px;
+    line-height:1.5;
+  }
+  .notice .notice-row{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px;}
+  .notice .btn{width:auto;}
+
+  /* Meal sections and entries */
+  .meal{margin-bottom:12px;}
+  .meal-head{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 2px 6px;}
+  .meal-head .meal-name{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-dim);}
+  .meal-head .meal-kcal{font-size:12px; color:var(--text-dim); margin-left:auto;}
+  .meal-head .btn{width:auto;}
+  .list{background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+  .list-empty{padding:12px 14px; font-size:13px; color:var(--text-dim);}
+  .item{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px;
+    min-height:52px;
+    border-bottom:1px solid var(--border);
+    width:100%;
+    background:none; border-left:none; border-right:none; border-top:none;
+    color:inherit; font-family:inherit; text-align:left;
+  }
+  .item:last-child{border-bottom:none;}
+  .item-main{flex:1; min-width:0;}
+  .item-name{font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .item-sub{font-size:12px; color:var(--text-dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .item-right{flex:0 0 auto; text-align:right; font-size:13px; font-weight:700;}
+  .item-right .item-sub{font-weight:400;}
+  .icon-btn{
+    flex:0 0 auto;
+    width:44px; height:44px;
+    border:none; border-radius:10px;
+    background:var(--bg-elev-2); color:var(--text-dim);
+    font-size:18px; font-weight:700; font-family:inherit;
+  }
+  .icon-btn.add{color:var(--accent);}
+  .icon-btn.del{background:var(--danger-dim); color:var(--danger);}
+  .tag{
+    display:inline-block;
+    border-radius:5px;
+    padding:0 5px;
+    font-size:10px;
+    font-weight:700;
+    margin-left:4px;
+    vertical-align:1px;
+  }
+  .item-sub .tag{margin-left:0; margin-right:5px;}
+  .tag.warn{background:var(--danger-dim); color:var(--danger);}
+  .tag.est{background:var(--accent-dim); color:var(--text);}
+  .tag.src{background:var(--bg-elev-2); color:var(--text-dim); border:1px solid var(--border);}
+
+  .complete-btn.done{background:rgba(74,222,128,0.12); color:var(--good); border:1px solid rgba(74,222,128,0.35);}
+
+  /* Add tab */
+  .search-box{position:relative; margin-bottom:10px;}
+  .search-status{font-size:12px; color:var(--text-dim); margin:6px 2px 10px; min-height:16px;}
+  .search-status.err{color:var(--danger);}
+  .action-row{display:flex; gap:8px; margin-bottom:12px;}
+  .action-row .btn{flex:1;}
+  .chip-row{display:flex; flex-direction:column; gap:8px; margin-bottom:12px;}
+  .group-title{font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; margin:14px 2px 6px;}
+
+  /* Segmented control */
+  .seg{display:flex; background:var(--bg-elev-2); border:1px solid var(--border); border-radius:10px; padding:3px; gap:3px;}
+  .seg button{
+    flex:1; min-height:40px;
+    background:none; border:none; border-radius:8px;
+    color:var(--text-dim); font-family:inherit; font-size:14px; font-weight:700;
+  }
+  .seg button.on{background:var(--accent); color:#0b1020;}
+
+  .field{margin-bottom:10px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px 10px;}
+
+  /* Bottom sheets (entry editor, quick add, custom food, recipe builder, confirms) */
+  .sheet-backdrop{
+    position:fixed; inset:0; z-index:70;
+    background:rgba(0,0,0,0.62);
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:12px; padding-top:calc(12px + var(--safe-top));
+    padding-bottom:calc(12px + var(--safe-bottom));
+  }
+  .sheet{
+    width:100%; max-width:608px;
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    max-height:100%;
+    display:flex; flex-direction:column;
+    box-shadow:0 12px 40px rgba(0,0,0,0.6);
+  }
+  .sheet.tall{height:100%;}
+  .sheet-head{display:flex; align-items:flex-start; gap:10px; padding:14px 14px 8px;}
+  .sheet-title{flex:1; min-width:0; font-size:17px; font-weight:800;}
+  .sheet-sub{font-size:12px; color:var(--text-dim); font-weight:400; margin-top:2px;}
+  .sheet-body{padding:4px 14px 10px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1;}
+  .sheet-actions{display:flex; gap:8px; padding:10px 14px 14px; border-top:1px solid var(--border);}
+  .sheet-actions .btn{flex:1;}
+  .preview{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+    background:var(--bg-elev-2); border:1px solid var(--border); border-radius:10px;
+    padding:10px; margin-top:6px;
+  }
+  .preview .pv{text-align:center;}
+  .preview .pv-val{font-size:15px; font-weight:800;}
+  .preview .pv-name{font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.03em;}
+  .preview .pv.null .pv-val{color:var(--danger);}
+  .big-input{font-size:22px !important; font-weight:800; text-align:center;}
+  textarea{
+    width:100%; background:var(--bg-elev-2); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:10px 12px; font-size:16px; font-family:inherit; outline:none; min-height:64px;
+  }
+  .warn-text{color:var(--danger); font-size:12px; margin-top:6px; line-height:1.5;}
+
   /* Shown when a new version lands while an entry or review screen is open,
      so the refresh happens on Rob's terms instead of discarding edits. */
   .update-banner{
@@ -297,37 +474,35 @@
 <body>
 <div id="app">
   <header>
-    <h1 id="headerTitle">Today</h1>
-    <div class="subtitle" id="headerSubtitle"></div>
+    <div class="header-row">
+      <div>
+        <h1 id="headerTitle">Today</h1>
+        <div class="subtitle" id="headerSubtitle"></div>
+      </div>
+      <button class="mode-chip" id="modeChip" data-role="mode-chip" hidden></button>
+    </div>
   </header>
 
   <main>
     <div id="storageAlert" class="storage-alert" data-role="storage-alert" hidden></div>
 
     <!-- TODAY -->
-    <section id="view-today" class="view active">
-      <div class="empty-state" data-role="today-empty">
-        Nothing logged for this day.<br>Food logging arrives in M1.
-      </div>
-    </section>
+    <section id="view-today" class="view active"><div id="todayRoot"></div></section>
 
     <!-- ADD -->
-    <section id="view-add" class="view">
-      <div class="empty-state">Search, barcode and quick add arrive in M1 and M2.</div>
-    </section>
+    <section id="view-add" class="view"><div id="addRoot"></div></section>
 
     <!-- FOODS -->
-    <section id="view-foods" class="view">
-      <div class="empty-state">No custom foods or recipes yet.</div>
-    </section>
+    <section id="view-foods" class="view"><div id="foodsRoot"></div></section>
 
     <!-- TRENDS -->
     <section id="view-trends" class="view">
-      <div class="empty-state">Trends need logged days. They arrive in M3.</div>
+      <div class="empty-state">Trends need logged days and the sheet. They arrive in M3.</div>
     </section>
 
     <!-- SETTINGS -->
     <section id="view-settings" class="view">
+      <div id="settingsTop"></div>
       <!-- The Apps Script URL plus token is a capability for the sheet and for
            Anthropic credits, so it is entered on the device and never lives in the repo. -->
       <div class="card">
@@ -341,6 +516,8 @@
         </div>
         <div class="sync-status" id="syncStatus" data-role="sync-status"></div>
       </div>
+
+      <div id="backupRoot"></div>
 
       <div class="card">
         <div class="card-title">Storage</div>
@@ -380,6 +557,8 @@
 
   <div class="toast" id="toast"></div>
 </div>
+
+<input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
 
 <script src="app.js"></script>
 </body>
